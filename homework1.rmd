@@ -1,0 +1,149 @@
+---
+title: "DATA 608 - HW1"
+assignment: "Module 1 Exploratory Data Analysis"
+date: "9/12/21"
+author: "John Mazon"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+**Principles of Data Visualization and Introduction to ggplot2**
+
+I have provided you with data about the 5,000 fastest growing companies in the US, as compiled by Inc. magazine. lets read this in:
+
+```{r}
+
+inc <- read.csv("https://raw.githubusercontent.com/charleyferrari/CUNY_DATA_608/master/module1/Data/inc5000_data.csv", header= TRUE)
+
+```
+
+And lets preview this data:
+
+```{r}
+
+head(inc)
+
+```
+```{r}
+
+summary(inc)
+
+```
+
+Think a bit on what these summaries mean. Use the space below to add some more relevant non-visual exploratory information you think helps you understand this data:
+
+Below are my top 5 useful details for relevant non-visual exploratory information to help understand the data
+
+```{r}
+
+# Insert your code here, create more chunks as necessary
+
+#below will help us identify what kind/type of data we have provided
+sapply(inc, class)
+
+#below will give us an idea for missing values as this may heavily affect our data
+colSums(is.na(inc))
+
+#below I always find useful in order to view the tail of our dataset since above we view head already. We were told above that this information pertains to 5,000 fastest growing companies in the US, as compiled by Inc. magazine
+tail(inc)
+
+#below caught my attention as to find out deeper stats on the industry column
+unique(unlist(inc$Industry))
+
+#below check for 'unique' data pertaining to states without a doubt will also have many wondering to see whats included
+unique(inc$State)
+```
+
+## Question 1
+
+Create a graph that shows the distribution of companies in the dataset by State (ie how many are in each state). There are a lot of States, so consider which axis you should use. This visualization is ultimately going to be consumed on a 'portrait' oriented screen (ie taller than wide), which should further guide your layout choices.
+
+```{r}
+#load the libraries 
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+
+#below plot will us visualize the states on our Y axis and number of companies on X. We see the amount increase as blue shed gets lighter
+
+inc %>% 
+  count(State) %>% 
+  ggplot(aes(x = reorder(State,n,sum),y= n , fill = n))+
+  geom_col()+
+  labs(title = "Number Of Companies By State",
+       x = "State",
+       y = "Number Of Companies") +
+  coord_flip()
+
+```
+
+## Quesiton 2
+
+Lets dig in on the state with the 3rd most companies in the data set. Imagine you work for the state and are interested in how many people are employed by companies in different industries. Create a plot that shows the average and/or median employment by industry for companies in this state (only use cases with full data, use R's `complete.cases()` function.) In addition to this, your graph should show how variable the ranges are, and you should deal with outliers.
+
+```{r}
+#load the libraries
+
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+
+#we desire to find out the third state
+the_third_state <- inc %>% 
+  group_by(State) %>%
+  summarise(No_Companies = n()) %>%
+  arrange(desc(No_Companies)) %>%
+  summarise(value = nth(State, 3))
+
+paste0("The 3rd Most Employed State:",the_third_state[[1, 1]])
+# we see new york appears as result from our third filter
+
+inc[complete.cases(inc), ] %>% 
+  filter(State == the_third_state[[1, 1]]) %>%
+  group_by(Industry) %>%
+  summarise(No_of_Employees = sum(Employees)) %>%
+  arrange(desc(No_of_Employees)) %>%
+  ggplot(aes(x = reorder(Industry, No_of_Employees), y = No_of_Employees)) + 
+    geom_bar(stat="identity") + 
+    coord_flip() + 
+    labs(title=paste("Most Employed Companies in", the_third_state[[1, 1]], "by Industry"))
+
+
+inc[complete.cases(inc), ] %>% 
+  filter(State == the_third_state[[1, 1]]) %>%
+  ggplot(aes(Industry, Employees)) + 
+    geom_boxplot() + 
+    coord_flip() + 
+    labs(title ="New York Employment Overview by Industry") +
+    geom_boxplot(outlier.shape=NA) +
+    scale_y_continuous(limits = quantile(inc[complete.cases(inc), ]$Employees, c(0.01, 0.99)))
+```
+
+## Question 3
+
+Now imagine you work for an investor and want to see which industries generate the most revenue per employee. Create a chart that makes this information clear. Once again, the distribution per industry should be shown.
+
+```{r}
+#with below code we are able to see which industries generate the most revenue per employee
+inc <- inc[complete.cases(inc),]
+
+industry_emp = inc %>%
+  group_by(Industry) %>%
+  summarise(Revenue=sum(Revenue), Employees=sum(Employees)) %>%
+  mutate(Revenue_per_Employee = Revenue/Employees)
+
+d <- ggplot(industry_emp, aes(x=reorder(Industry, Revenue_per_Employee), y=Revenue_per_Employee, fill=Revenue_per_Employee))
+d + geom_bar(stat="identity") + coord_flip() + labs(x = "Industry", y = "Number of Employees")
+
+
+rev_emp = inc %>%
+  mutate(Revenue_per_Employee = Revenue/Employees)
+
+h <- ggplot(rev_emp, aes(reorder(Industry,Revenue_per_Employee,mean), Revenue_per_Employee))
+h <- h + geom_boxplot() + coord_flip() + labs(x = "Industry", y = "Employees") 
+h
+
+```
+
+
